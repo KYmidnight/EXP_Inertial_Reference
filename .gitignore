@@ -1,0 +1,18 @@
+# Arduino / PlatformIO
+.pio/
+.vscode/
+*.elf
+*.bin
+*.hex
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archives
+*.tar.gz
+*.zip
+
+# Temporary
+*.tmp
+*~
