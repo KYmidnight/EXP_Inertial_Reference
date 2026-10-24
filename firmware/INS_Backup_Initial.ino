@@ -1,14 +1,21 @@
 /*
  * Aircraft Inertial Reference Navigation Backup
- * Initial Breadboard Firmware v0.1
- * 
+ * Breadboard Firmware v0.2
+ *
+ * Improvements over v0.1:
+ * - Proper SSD1309 invert (0xA6 / 0xA7) instead of contrast=0
+ * - Tilt-compensated magnetic heading (roll/pitch from accel)
+ * - Clearer GPS health indication and mode (GPS / INS)
+ * - Safer sensor read structure
+ * - Labeled HDG (MAG)
+ *
  * Hardware:
  * - ESP32-S3-DevKitC N16R8
- * - DFRobot Gravity 10DOF (BMI323+BMM350+BMP581)
+ * - DFRobot Gravity 10DOF (BMI323 + BMM350 + BMP581)
  * - HiLetgo 2.42" SSD1309 OLED (SPI)
  * - NEO-M8N GPS
  * - Two tactile buttons
- * 
+ *
  * Required libraries:
  * - U8g2
  * - TinyGPSPlus
@@ -20,6 +27,7 @@
 #include <TinyGPSPlus.h>
 #include "DFRobot_Multi_DOF_IMU.h"
 #include <Preferences.h>
+#include <math.h>
 
 // -------------------- Pins --------------------
 #define OLED_SCK   12
@@ -38,7 +46,6 @@
 #define BTN_RESET  5
 
 // -------------------- Objects --------------------
-// Software SPI for flexible pin choice
 U8G2_SSD1309_128X64_NONAME2_F_4W_SW_SPI u8g2(
   U8G2_R0,
   OLED_SCK, OLED_MOSI, OLED_CS, OLED_DC, OLED_RST
@@ -55,17 +62,26 @@ Preferences prefs;
 // -------------------- State --------------------
 unsigned long resetMillis = 0;
 bool displayInverted = false;
+
 float originLat = 0, originLon = 0;
 bool originSet = false;
+
 float headingDeg = 0;
 float altitudeM = 0;
 float distanceM = 0;
+
+bool gpsHealthy = false;
+bool insMode = true;          // true = pure INS / no healthy GPS
+
+// Simple GPS health thresholds (tune later)
+const int   MIN_SATS = 4;
+const float MAX_HDOP = 2.5;
 
 // -------------------- Setup --------------------
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println("\nINS Backup – Initial Bring-up");
+  Serial.println("\nINS Backup – v0.2");
 
   // Buttons
   pinMode(BTN_MENU, INPUT_PULLUP);
@@ -88,6 +104,7 @@ void setup() {
     imu.setSensorMode(DFRobot_Multi_DOF_IMU::eNormalMode);
     imu.setAccelRange(DFRobot_Multi_DOF_IMU::eAccelRange2G);
     imu.setGyroRange(DFRobot_Multi_DOF_IMU::eGyroRange250DPS);
+    // Optional: calibrateAltitude(knownAltitudeMeters) if you want absolute baro later
   }
 
   // GPS
@@ -122,7 +139,7 @@ void loop() {
 void showSplash() {
   u8g2.clearBuffer();
   u8g2.drawStr(10, 20, "INS BACKUP");
-  u8g2.drawStr(10, 35, "Bring-up v0.1");
+  u8g2.drawStr(10, 35, "v0.2 Bring-up");
   u8g2.drawStr(10, 50, "Waiting...");
   u8g2.sendBuffer();
   delay(1500);
@@ -136,26 +153,63 @@ void showError(const char* msg) {
 }
 
 void applyDisplayMode() {
-  // U8g2 invert via setPowerSave or contrast + software invert for mono
-  // For simple black/white swap we use contrast and font color conceptually
-  // Full invert can be done by drawing inverted later if needed
-  u8g2.setContrast(displayInverted ? 0 : 255);
+  // Proper SSD1309 invert (0xA6 = normal, 0xA7 = inverted)
+  // Do NOT use setContrast(0) — that blanks the display
+  if (displayInverted) {
+    u8g2.sendF("c", 0xA7);
+  } else {
+    u8g2.sendF("c", 0xA6);
+  }
+  u8g2.setContrast(255);
+}
+
+// Tilt-compensated magnetic heading
+// Assumes accelerometer Z is "up" when level (adjust if board orientation differs)
+float computeTiltCompensatedHeading(float ax, float ay, float az, float mx, float my, float mz) {
+  // Normalize accelerometer
+  float normA = sqrt(ax*ax + ay*ay + az*az);
+  if (normA < 0.01f) return headingDeg;  // keep last
+  ax /= normA; ay /= normA; az /= normA;
+
+  // Roll and pitch from accelerometer (radians)
+  float roll  = atan2(ay, az);
+  float pitch = atan2(-ax, sqrt(ay*ay + az*az));
+
+  // Tilt-compensate magnetometer
+  float mx_h = mx * cos(pitch) + mz * sin(pitch);
+  float my_h = mx * sin(roll) * sin(pitch) + my * cos(roll) - mz * sin(roll) * cos(pitch);
+
+  float heading = atan2(my_h, mx_h) * 180.0f / PI;
+  if (heading < 0) heading += 360.0f;
+  return heading;
 }
 
 void readSensors() {
   DFRobot_Multi_DOF_IMU::sSensorData_t accel, gyro, mag;
-  float pressureAlt;
+  float pressureAlt = 0;
 
+  // get10dofData is the documented call for this module.
+  // Last argument true = return altitude (m) instead of raw pressure (Pa).
+  // If this returns false on first bring-up, fall back to reading pressure and converting.
   if (imu.get10dofData(&accel, &gyro, &mag, &pressureAlt, true)) {
-    // Simple heading from magnetometer (X/Y) – needs calibration later
-    headingDeg = atan2(mag.y, mag.x) * 180.0 / PI;
-    if (headingDeg < 0) headingDeg += 360.0;
-
+    // Tilt-compensated magnetic heading
+    headingDeg = computeTiltCompensatedHeading(
+      accel.x, accel.y, accel.z,
+      mag.x, mag.y, mag.z
+    );
     altitudeM = pressureAlt;
   }
 
-  // GPS time / position when valid
-  if (gps.location.isValid() && gps.satellites.value() >= 4 && gps.hdop.hdop() < 2.5) {
+  // GPS health check
+  gpsHealthy = gps.location.isValid() &&
+               gps.satellites.isValid() &&
+               gps.satellites.value() >= MIN_SATS &&
+               gps.hdop.isValid() &&
+               gps.hdop.hdop() < MAX_HDOP;
+
+  insMode = !gpsHealthy;
+
+  if (gpsHealthy) {
     if (!originSet) {
       originLat = gps.location.lat();
       originLon = gps.location.lng();
@@ -163,18 +217,18 @@ void readSensors() {
       resetMillis = millis();
       Serial.println("Origin set from GPS");
     }
-    // Simple distance (Haversine stub – replace with better later)
     distanceM = TinyGPSPlus::distanceBetween(
       originLat, originLon,
       gps.location.lat(), gps.location.lng()
     );
   }
+  // When not healthy, distanceM is left unchanged (will be replaced by pure INS integration later)
 }
 
 void updateDisplay() {
   u8g2.clearBuffer();
 
-  char buf[32];
+  char buf[40];
 
   // Time
   if (gps.time.isValid()) {
@@ -190,22 +244,26 @@ void updateDisplay() {
   snprintf(buf, sizeof(buf), "RST %02lu:%02lu", since / 60, since % 60);
   u8g2.drawStr(70, 12, buf);
 
-  // Heading
-  snprintf(buf, sizeof(buf), "HDG %3.0f", headingDeg);
-  u8g2.drawStr(0, 28, buf);
+  // Heading (magnetic, tilt-compensated)
+  snprintf(buf, sizeof(buf), "HDG(MAG) %3.0f", headingDeg);
+  u8g2.drawStr(0, 26, buf);
 
-  // Distance
-  snprintf(buf, sizeof(buf), "DIST %5.0f m", distanceM);
-  u8g2.drawStr(0, 42, buf);
+  // Distance + mode
+  if (insMode) {
+    snprintf(buf, sizeof(buf), "DIST %5.0fm INS", distanceM);
+  } else {
+    snprintf(buf, sizeof(buf), "DIST %5.0fm GPS", distanceM);
+  }
+  u8g2.drawStr(0, 40, buf);
 
   // Altitude
   snprintf(buf, sizeof(buf), "ALT %5.0f m", altitudeM);
-  u8g2.drawStr(0, 56, buf);
+  u8g2.drawStr(0, 54, buf);
 
   // Status
   if (gps.satellites.isValid()) {
-    snprintf(buf, sizeof(buf), "SAT %d", gps.satellites.value());
-    u8g2.drawStr(80, 56, buf);
+    snprintf(buf, sizeof(buf), "SAT%d", gps.satellites.value());
+    u8g2.drawStr(90, 54, buf);
   }
 
   u8g2.sendBuffer();
@@ -222,7 +280,6 @@ void handleButtons() {
   if (menuDown) {
     if (menuPress == 0) menuPress = millis();
     if (millis() - menuPress > 5000) {
-      // Enter menu stub
       u8g2.clearBuffer();
       u8g2.drawStr(20, 30, "MENU STUB");
       u8g2.sendBuffer();
@@ -231,7 +288,7 @@ void handleButtons() {
     }
   } else {
     if (menuPress > 0 && millis() - menuPress < 1000) {
-      // Short press – toggle invert
+      // Short press – toggle proper invert
       displayInverted = !displayInverted;
       prefs.putBool("invert", displayInverted);
       applyDisplayMode();
