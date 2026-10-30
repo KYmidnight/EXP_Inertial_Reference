@@ -6,13 +6,18 @@ Provides approximate magnetic heading, distance from a known origin, altitude, a
 
 **This is not a precision navigation system.** Inertial drift is expected. It is a “good enough” reorientation aid for visual flight rules.
 
+**Operator instructions:** see [OPERATORS_INSTRUCTIONS.md](OPERATORS_INSTRUCTIONS.md) (also in `docs/`).
+
 ## Status
 
-**v0.3 – Breadboard / Bring-up**
+**v0.3.4 – Breadboard / Bring-up**
 
 - Hardware selected
-- Firmware with tilt-compensated heading, GPS health gating, basic INS distance stub, units toggle, persistent settings, and two-button UI
+- Firmware with tilt-compensated heading, GPS health gating, basic INS distance, units toggle, persistent settings, two-button UI
+- Power-source sensing, 120 s battery countdown, deep-sleep shutdown, and automatic wake on 12 V restore
+- Non-blocking blinking alerts (BATT, GPS FAIL)
 - Corrected wiring diagram and power architecture
+- Operator instructions
 - Next: physical bring-up, full dead-reckoning, magnetometer calibration, 3D-printed case
 
 ## Hardware
@@ -25,6 +30,7 @@ Provides approximate magnetic heading, distance from a known origin, altitude, a
 | GPS | Deegoo NEO-M8N (external housing) | UART NMEA |
 | Buttons | 6×6 mm tactile switches | Menu + Reset |
 | Power | MP1584EN buck + TP4056 + protected 1S LiPo | 12/24 V aircraft + battery backup |
+| Power sense | 10 kΩ / 10 kΩ divider | From buck OUT+ to GPIO 1 (ADC + wake) |
 
 See `docs/WIRING_GUIDE.md` and `images/wiring_diagram.jpg`.
 
@@ -39,7 +45,7 @@ See `docs/WIRING_GUIDE.md` and `images/wiring_diagram.jpg`.
 4. Board: **ESP32S3 Dev Module**, PSRAM enabled, USB CDC On Boot enabled if using native USB.
 5. Upload and open Serial Monitor at 115200.
 
-## Features (v0.3)
+## Features (v0.3.4)
 
 - Tilt-compensated magnetic heading
 - GPS health check (satellites + HDOP) with GPS / INS mode indicator
@@ -51,7 +57,21 @@ See `docs/WIRING_GUIDE.md` and `images/wiring_diagram.jpg`.
   - Long press Menu (5 s) → enter/exit menu
   - Short press Menu in menu → toggle current option
   - Long press Reset (5 s) → reset origin/timer (or advance menu)
-  - Both buttons → soft power-off message
+- Power sensing via voltage divider on GPIO 1
+- 120-second battery countdown with blinking **BATT** alert
+- Seamless cancel if aircraft power returns during the countdown (no reset)
+- Deep-sleep shutdown after 120 s; automatic wake when 12 V is restored
+- Blinking **GPS FAIL** alert (1 s on / 1 s off) that does not block primary data
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [OPERATORS_INSTRUCTIONS.md](OPERATORS_INSTRUCTIONS.md) | Pilot-facing use guide |
+| [docs/WIRING_GUIDE.md](docs/WIRING_GUIDE.md) | Pinout, modules, and power circuit |
+| [docs/BREADBOARD_GUIDE.md](docs/BREADBOARD_GUIDE.md) | Bring-up steps |
+| [docs/DESIGN_NOTES.md](docs/DESIGN_NOTES.md) | Technical notes and limitations |
+| [hardware/pinout.md](hardware/pinout.md) | GPIO assignments |
 
 ## Project Goals
 
