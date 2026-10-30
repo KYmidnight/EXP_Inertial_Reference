@@ -1,6 +1,7 @@
 /*
+#include <esp_sleep.h>
  * Aircraft Inertial Reference Navigation Backup
- * Firmware v0.3 (Breadboard / Bring-up + core features)
+ * Firmware v0.3.4 (Breadboard / Bring-up + core features)
  *
  * Hardware:
  * - ESP32-S3-DevKitC N16R8 (dual USB-C)
@@ -48,6 +49,10 @@
 #define BTN_MENU   4
 #define BTN_RESET  5
 
+#define PWR_SENSE_PIN 1          // ADC pin – voltage divider from buck OUT+
+#define PWR_THRESHOLD 2000       // raw ADC; tune on bench (~2.0 V with 10k/10k)
+#define SHUTDOWN_SECONDS 120
+
 // -------------------- Objects --------------------
 U8G2_SSD1309_128X64_NONAME2_F_4W_SW_SPI u8g2(
   U8G2_R0,
@@ -81,6 +86,10 @@ float insDistanceM = 0;         // distance accumulated in pure INS mode
 bool gpsHealthy = false;
 bool inMenu = false;
 int menuIndex = 0;
+
+bool onBattery = false;
+unsigned long batteryStartMillis = 0;
+bool shutdownTriggered = false;
 const int MENU_ITEMS = 3;       // Units, Invert, Exit
 
 // -------------------- Helpers --------------------
@@ -150,6 +159,7 @@ void loop() {
     }
   }
 
+  checkPower();
   handleButtons();
 }
 
@@ -179,8 +189,9 @@ void applyDisplayMode() {
 void updateDisplay() {
   u8g2.clearBuffer();
   char buf[32];
+  bool blinkOn = ((millis() / 1000) % 2) == 0;  // 1 s on / 1 s off
 
-  // Time
+  // Time (left)
   if (gps.time.isValid() && gpsHealthy) {
     snprintf(buf, sizeof(buf), "%02d:%02d:%02d",
              gps.time.hour(), gps.time.minute(), gps.time.second());
@@ -189,17 +200,31 @@ void updateDisplay() {
   }
   u8g2.drawStr(0, 12, buf);
 
-  // Time since reset
-  unsigned long since = (millis() - resetMillis) / 1000;
-  snprintf(buf, sizeof(buf), "RST %02lu:%02lu", since / 60, since % 60);
-  u8g2.drawStr(70, 12, buf);
+  // Time since reset (center-right) — only if not overridden by BATT
+  if (!onBattery || !blinkOn) {
+    unsigned long since = (millis() - resetMillis) / 1000;
+    snprintf(buf, sizeof(buf), "RST %02lu:%02lu", since / 60, since % 60);
+    u8g2.drawStr(70, 12, buf);
+  }
+
+  // Blinking BATT in top-right when on battery
+  if (onBattery && blinkOn) {
+    unsigned long left = SHUTDOWN_SECONDS - (millis() - batteryStartMillis) / 1000;
+    if ((long)left < 0) left = 0;
+    snprintf(buf, sizeof(buf), "BATT %lus", left);
+    u8g2.drawStr(70, 12, buf);
+  }
 
   // Heading
   snprintf(buf, sizeof(buf), "HDG %3.0f", headingDeg);
   u8g2.drawStr(0, 28, buf);
 
-  // Mode indicator
-  u8g2.drawStr(90, 28, gpsHealthy ? "GPS" : "INS");
+  // Mode / GPS FAIL (right of heading)
+  if (!gpsHealthy && blinkOn) {
+    u8g2.drawStr(70, 28, "GPS FAIL");
+  } else {
+    u8g2.drawStr(90, 28, gpsHealthy ? "GPS" : "INS");
+  }
 
   // Distance
   float showDist = toDisplayDist(distanceM);
@@ -211,7 +236,7 @@ void updateDisplay() {
   snprintf(buf, sizeof(buf), "ALT %5.0f %s", showAlt, useMetric ? "m" : "ft");
   u8g2.drawStr(0, 56, buf);
 
-  // Satellites
+  // Satellites (right of altitude) — hide when GPS FAIL is blinking there? keep always
   if (gps.satellites.isValid()) {
     snprintf(buf, sizeof(buf), "SAT %d", gps.satellites.value());
     u8g2.drawStr(90, 56, buf);
@@ -387,5 +412,42 @@ void handleButtons() {
     }
   } else {
     resetPress = 0;
+  }
+}
+
+// -------------------- Power Sensing --------------------
+void checkPower() {
+  int raw = analogRead(PWR_SENSE_PIN);
+  bool aircraftPresent = (raw > PWR_THRESHOLD);
+
+  if (!aircraftPresent && !onBattery) {
+    onBattery = true;
+    batteryStartMillis = millis();
+    shutdownTriggered = false;
+    Serial.println("Switched to battery");
+  }
+  if (aircraftPresent && onBattery) {
+    onBattery = false;
+    Serial.println("Aircraft power restored");
+  }
+
+  if (onBattery && !shutdownTriggered) {
+    unsigned long elapsed = (millis() - batteryStartMillis) / 1000;
+    if (elapsed >= SHUTDOWN_SECONDS) {
+      shutdownTriggered = true;
+      Serial.println("Shutdown timer expired – entering deep sleep");
+      u8g2.clearBuffer();
+      u8g2.drawStr(15, 30, "SHUTDOWN");
+      u8g2.drawStr(5, 45, "sleep until 12V");
+      u8g2.sendBuffer();
+      delay(1500);
+
+      // Wake when aircraft power returns (GPIO 1 goes high via voltage divider)
+      // GPIO 1 is RTC-capable on ESP32-S3
+      esp_sleep_enable_ext0_wakeup((gpio_num_t)PWR_SENSE_PIN, 1);  // 1 = high level
+      Serial.println("Entering deep sleep – will wake on 12V restore");
+      Serial.flush();
+      esp_deep_sleep_start();
+    }
   }
 }

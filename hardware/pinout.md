@@ -17,3 +17,5 @@ Safe GPIOs only (avoids PSRAM 35–37, USB 19/20, and strapping pins).
 | Button Reset          | 5    | In        | INPUT_PULLUP, to GND     |
 
 All modules share GND. Power from 3.3 V or 5 V as appropriate for each module.
+
+| Power sense (ADC)     | 1    | In        | 10k/10k divider from buck OUT+ |

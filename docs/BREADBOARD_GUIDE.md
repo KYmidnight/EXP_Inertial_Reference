@@ -28,6 +28,7 @@ Also install the ESP32 board package.
 | GPS UART TX (→ GPS RX) | 17 | Optional |
 | Button Menu | 4 | INPUT_PULLUP to GND |
 | Button Reset | 5 | INPUT_PULLUP to GND |
+| Power sense (ADC) | 1 | 10k/10k divider from buck OUT+ |
 
 All modules share GND. Power from 3.3 V or 5 V as appropriate.
 

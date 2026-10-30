@@ -124,3 +124,15 @@ Start with USB power only. Add the buck + TP4056 + LiPo only after OLED, IMU, GP
 - Fuse the aircraft power input.
 - Secure all wiring against vibration.
 - The device is a VFR reorientation aid only; pure inertial drift is expected and acceptable for sectional reorientation.
+
+## 5. Power-Source Sensing
+
+To detect when aircraft power is lost and the system switches to the LiPo:
+
+1. Build a voltage divider on the MP1584EN **OUT+** (5 V):
+   - 10 kΩ from OUT+ to the sense node
+   - 10 kΩ from the sense node to GND
+2. Connect the sense node to **ESP32 GPIO 1** (ADC1_CH0 on the right header).
+3. Firmware reads this pin. When the voltage drops below the threshold, it sets `onBattery = true` and starts the 120-second shutdown countdown.
+
+All other power connections remain as described above.
