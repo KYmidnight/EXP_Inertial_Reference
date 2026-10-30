@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000">
+  <style>
+    .title { font: bold 22px sans-serif; }
+    .label { font: 12px sans-serif; }
+    .pin { font: 10px monospace; }
+    .box { fill: none; stroke: #333; stroke-width: 1.5; }
+    .power { stroke: #c00; stroke-width: 2; fill: none; }
+    .gnd { stroke: #000; stroke-width: 1.5; }
+    .signal { stroke: #06c; stroke-width: 1.5; }
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+  <text x="700" y="30" text-anchor="middle" class="title">EXP Inertial Reference – Accurate Wiring Diagram v1.0</text>
+  <text x="700" y="52" text-anchor="middle" font-size="12">ESP32-S3-DevKitC-1 N16R8 Dual USB-C | Pins on headers, USB ports at bottom (not used for GPIO)</text>
+
+  <!-- ESP32 Board -->
+  <rect x="500" y="80" width="280" height="520" rx="8" class="box" fill="#f8f8ff"/>
+  <text x="640" y="105" text-anchor="middle" font-weight="bold">ESP32-S3-DevKitC-1 N16R8</text>
+  <text x="640" y="122" text-anchor="middle" font-size="11">Dual USB-C (bottom)</text>
+  <text x="640" y="560" text-anchor="middle" font-size="10">UART USB | Native USB</text>
+
+  <!-- Left header pins (J1, top to bottom, USB at bottom) -->
+  <text x="490" y="150" class="pin" text-anchor="end">3V3</text>
+  <text x="490" y="170" class="pin" text-anchor="end">3V3</text>
+  <text x="490" y="190" class="pin" text-anchor="end">RST</text>
+  <text x="490" y="210" class="pin" text-anchor="end">GPIO4</text>
+  <text x="490" y="230" class="pin" text-anchor="end">GPIO5</text>
+  <text x="490" y="250" class="pin" text-anchor="end">GPIO6</text>
+  <text x="490" y="270" class="pin" text-anchor="end">GPIO7</text>
+  <text x="490" y="290" class="pin" text-anchor="end">GPIO15</text>
+  <text x="490" y="310" class="pin" text-anchor="end">GPIO16</text>
+  <text x="490" y="330" class="pin" text-anchor="end">GPIO17</text>
+  <text x="490" y="350" class="pin" text-anchor="end">GPIO18</text>
+  <text x="490" y="370" class="pin" text-anchor="end">GPIO8</text>
+  <text x="490" y="390" class="pin" text-anchor="end">GPIO3</text>
+  <text x="490" y="410" class="pin" text-anchor="end">GPIO46</text>
+  <text x="490" y="430" class="pin" text-anchor="end">GPIO9</text>
+  <text x="490" y="450" class="pin" text-anchor="end">GPIO10</text>
+  <text x="490" y="470" class="pin" text-anchor="end">GPIO11</text>
+  <text x="490" y="490" class="pin" text-anchor="end">GPIO12</text>
+  <text x="490" y="510" class="pin" text-anchor="end">GPIO13</text>
+  <text x="490" y="530" class="pin" text-anchor="end">GPIO14</text>
+  <text x="490" y="550" class="pin" text-anchor="end">5V</text>
+  <text x="490" y="570" class="pin" text-anchor="end">GND</text>
+
+  <!-- Right header simplified -->
+  <text x="790" y="150" class="pin">GND</text>
+  <text x="790" y="170" class="pin">TX (43)</text>
+  <text x="790" y="190" class="pin">RX (44)</text>
+  <text x="790" y="210" class="pin">... (other GPIOs)</text>
+  <text x="790" y="550" class="pin">GND</text>
+
+  <!-- Buttons -->
+  <rect x="80" y="180" width="180" height="100" class="box"/>
+  <text x="170" y="200" text-anchor="middle" font-weight="bold">Buttons</text>
+  <text x="100" y="225" class="label">BTN_MENU (GPIO4)</text>
+  <text x="100" y="245" class="label">BTN_RESET (GPIO5)</text>
+  <text x="100" y="265" class="label">Other sides → GND</text>
+  <line x1="260" y1="220" x2="480" y2="210" class="signal"/>
+  <line x1="260" y1="240" x2="480" y2="230" class="signal"/>
+
+  <!-- IMU -->
+  <rect x="80" y="320" width="180" height="110" class="box"/>
+  <text x="170" y="340" text-anchor="middle" font-weight="bold">DFRobot 10DOF</text>
+  <text x="100" y="360" class="label">+ (VCC) → 3.3V/5V</text>
+  <text x="100" y="378" class="label">– (GND)</text>
+  <text x="100" y="396" class="label">C/R (SCL) → GPIO9</text>
+  <text x="100" y="414" class="label">D/T (SDA) → GPIO8</text>
+  <line x1="260" y1="390" x2="480" y2="370" class="signal"/>
+  <line x1="260" y1="410" x2="480" y2="430" class="signal"/>
+
+  <!-- OLED -->
+  <rect x="80" y="460" width="180" height="140" class="box"/>
+  <text x="170" y="480" text-anchor="middle" font-weight="bold">SSD1309 OLED SPI</text>
+  <text x="100" y="500" class="label">GND</text>
+  <text x="100" y="518" class="label">VCC → 3.3V/5V</text>
+  <text x="100" y="536" class="label">SCK → GPIO12</text>
+  <text x="100" y="554" class="label">SDA/MOSI → GPIO11</text>
+  <text x="100" y="572" class="label">RES → GPIO14</text>
+  <text x="100" y="590" class="label">DC → GPIO13</text>
+  <text x="100" y="608" class="label">CS → GPIO10</text>
+
+  <!-- GPS -->
+  <rect x="80" y="630" width="180" height="120" class="box"/>
+  <text x="170" y="650" text-anchor="middle" font-weight="bold">NEO-M8N GPS (6-wire)</text>
+  <text x="100" y="670" class="label">VCC → 5V</text>
+  <text x="100" y="688" class="label">GND</text>
+  <text x="100" y="706" class="label">TX → GPIO16 (ESP RX)</text>
+  <text x="100" y="724" class="label">RX ← GPIO17 (ESP TX)</text>
+  <text x="100" y="742" class="label">PPS / NC (optional)</text>
+  <line x1="260" y1="700" x2="480" y2="310" class="signal"/>
+  <line x1="260" y1="720" x2="480" y2="330" class="signal"/>
+
+  <!-- Power section -->
+  <rect x="900" y="80" width="450" height="420" class="box" fill="#fff8f0"/>
+  <text x="1125" y="105" text-anchor="middle" font-weight="bold">Power Architecture</text>
+  <text x="920" y="140" class="label">Aircraft 12/24V → Fuse + Reverse Diode</text>
+  <text x="920" y="160" class="label">→ MP1584EN Buck (set OUT = 5.0V)</text>
+  <text x="920" y="190" class="label">Buck 5V → TP4056 IN+</text>
+  <text x="920" y="210" class="label">TP4056 B+/BAT+ → 1S LiPo +</text>
+  <text x="920" y="230" class="label">TP4056 OUT+ (protected) → System 5V</text>
+  <text x="920" y="260" class="label">System 5V OR'd (Schottky) from:</text>
+  <text x="940" y="280" class="label">• Buck 5V (aircraft power)</text>
+  <text x="940" y="298" class="label">• LiPo via boost or TP4056 OUT</text>
+  <text x="920" y="330" class="label">System 5V → ESP32 5V pin</text>
+  <text x="920" y="348" class="label">+ OLED / IMU / GPS VCC</text>
+  <text x="920" y="378" class="label">All GND common.</text>
+  <text x="920" y="398" class="label">Auto-start on aircraft power.</text>
+  <text x="920" y="416" class="label">Battery takeover + 120s shutdown countdown</text>
+  <text x="920" y="434" class="label">(optional MOSFET on battery path).</text>
+
+  <!-- Notes -->
+  <text x="50" y="780" font-weight="bold">Key Notes</text>
+  <text x="50" y="800" class="label">• All signal pins used are on the left header (J1). USB ports are only for power/programming during development.</text>
+  <text x="50" y="818" class="label">• IMU: Set DIP to I2C, address 0x4A. Power from 3.3V preferred.</text>
+  <text x="50" y="836" class="label">• OLED: Software SPI on the listed pins. VCC can be 3.3V or 5V.</text>
+  <text x="50" y="854" class="label">• GPS: Only VCC, GND, TX, RX needed. Other two wires (PPS/etc.) can float.</text>
+  <text x="50" y="872" class="label">• Power: Use protected LiPo. Set MP1584 carefully to 5.0V with multimeter before connecting.</text>
+  <text x="50" y="890" class="label">• Avoid GPIO 19/20 (native USB), 35-37 (PSRAM on N16R8), and strapping pins during boot.</text>
+</svg>

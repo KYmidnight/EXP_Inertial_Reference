@@ -1,62 +1,70 @@
-# Aircraft Inertial Reference Navigation Backup (INS Backup)
+# EXP Inertial Reference
 
-**Open-source, low-cost inertial reference navigation aid for experimental aircraft.**
+A self-contained inertial reference navigation backup for experimental aircraft (VFR).
 
-A self-contained backup navigation device for VFR pilots in the event of GPS failure or spoofing. It provides approximate heading, distance from a known origin, altitude, and time so a pilot can reorient on a paper sectional and continue visual navigation.
+Provides approximate magnetic heading, distance from a known origin, altitude, and time so a pilot can reorient on a paper sectional if GPS fails or is spoofed.
 
-This is **not** a precision navigation system. Inertial drift is expected. It is designed as a “good enough” reorientation aid.
+**This is not a precision navigation system.** Inertial drift is expected. It is a “good enough” reorientation aid for visual flight rules.
 
-## Current Status
+## Status
 
-**Breadboard / Bring-up stage (v0.1)**
+**v0.3 – Breadboard / Bring-up**
 
-- Hardware selected and ordered
-- Initial firmware skeleton written
-- Wiring diagram and breadboard guide complete
-- Next: physical bring-up, then full menu, dead-reckoning, GPS integrity checks, calibration, and 3D-printed case
+- Hardware selected
+- Firmware with tilt-compensated heading, GPS health gating, basic INS distance stub, units toggle, persistent settings, and two-button UI
+- Corrected wiring diagram and power architecture
+- Next: physical bring-up, full dead-reckoning, magnetometer calibration, 3D-printed case
 
-## Hardware (Breadboard)
+## Hardware
 
 | Component | Part | Notes |
 |-----------|------|-------|
-| Controller | ESP32-S3-DevKitC N16R8 | 16 MB flash + 8 MB PSRAM |
+| Controller | ESP32-S3-DevKitC N16R8 (dual USB-C) | 16 MB flash + 8 MB PSRAM |
 | IMU + Baro | DFRobot Gravity 10DOF (BMI323 + BMM350 + BMP581) | I2C, address 0x4A |
-| Display | HiLetgo 2.42" SSD1309 128x64 OLED | SPI version |
-| GPS | Deegoo NEO-M8N (external antenna housing) | UART NMEA |
-| Buttons | 6x6 mm tactile switches | 2× (Menu + Reset) |
-| Power (later) | MP1584EN buck + TP4056 + protected 1S LiPo | 12/24 V aircraft + battery backup |
+| Display | HiLetgo 2.42" SSD1309 128x64 OLED | SPI (7-pin) |
+| GPS | Deegoo NEO-M8N (external housing) | UART NMEA |
+| Buttons | 6×6 mm tactile switches | Menu + Reset |
+| Power | MP1584EN buck + TP4056 + protected 1S LiPo | 12/24 V aircraft + battery backup |
 
-Full wiring and pin assignments are in `docs/BREADBOARD_GUIDE.md` and `images/wiring_diagram.jpg`.
+See `docs/WIRING_GUIDE.md` and `images/wiring_diagram.jpg`.
 
-## Quick Start (Breadboard)
+## Quick Start
 
-1. Install Arduino IDE + ESP32 board package.
+1. Install Arduino IDE and the ESP32 board package (Espressif Systems).
 2. Install libraries:
    - U8g2
    - TinyGPSPlus
-   - DFRobot_Multi_DOF_IMU (and its DFRobot_RTU dependency)
-3. Open `firmware/INS_Backup_Initial.ino`.
-4. Select board: **ESP32S3 Dev Module** (or ESP32-S3-DevKitC-1), enable PSRAM.
-5. Upload and follow the breadboard guide.
+   - DFRobot_Multi_DOF_IMU (and DFRobot_RTU if required)
+3. Open `firmware/INS_Backup/INS_Backup.ino`.
+4. Board: **ESP32S3 Dev Module**, PSRAM enabled, USB CDC On Boot enabled if using native USB.
+5. Upload and open Serial Monitor at 115200.
+
+## Features (v0.3)
+
+- Tilt-compensated magnetic heading
+- GPS health check (satellites + HDOP) with GPS / INS mode indicator
+- Basic pure-INS distance accumulation when GPS is unhealthy
+- Units toggle (metric / imperial)
+- Persistent display invert and units (NVS)
+- Correct SSD1309 invert (0xA6 / 0xA7)
+- Two-button UI:
+  - Long press Menu (5 s) → enter/exit menu
+  - Short press Menu in menu → toggle current option
+  - Long press Reset (5 s) → reset origin/timer (or advance menu)
+  - Both buttons → soft power-off message
 
 ## Project Goals
 
-- Cheap and buildable by average experimental aircraft enthusiasts
-- Clear, legible monochrome OLED (white-on-black / black-on-white)
-- Two-button UI with long-press behaviors
-- Persistent settings and compass calibration (NVS)
-- GPS used for time, altitude zeroing, and occasional position aiding **only when healthy**
-- Explicit GPS integrity monitoring with clean fallback to pure inertial mode
-- 3D-printable high-temperature case for standard 3 1/8" avionics panel
+- Cheap and buildable by experimental aircraft enthusiasts
+- Clear monochrome OLED
+- Explicit GPS integrity monitoring with clean fallback to inertial mode
+- Persistent settings and future compass calibration
+- 3D-printable high-temperature case for 3 1/8" panel
 - Fully open source
 
 ## License
 
 MIT License — see [LICENSE](LICENSE).
-
-## Contributing
-
-This is an early-stage project. Feedback, testing notes, and pull requests are welcome once the repository is public.
 
 ---
 
